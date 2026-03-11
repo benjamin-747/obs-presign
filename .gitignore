@@ -1,0 +1,9 @@
+/target
+
+Cargo.lock
+
+.env
+
+# Mac
+.DS_Store
+**/*.dylib
