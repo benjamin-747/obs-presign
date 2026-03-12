@@ -56,6 +56,11 @@ jobs:
           IMAGE_BASE="$REGISTRY/${{ env.REGISTRY_ALIAS }}/${{ env.REPOSITORY }}"
           
           docker buildx build \
+            --platform linux/amd64 \
+            --cache-from type=gha,scope=presign \
+            --cache-to type=gha,mode=max,scope=presign \
+            --provenance=false \
+            --sbom=false \
             -t "$IMAGE_BASE:$IMAGE_TAG" . \
             --push
 
