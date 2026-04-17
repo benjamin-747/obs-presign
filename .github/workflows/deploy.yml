@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 env:
   REGISTRY_ALIAS: m8q5m4u3
@@ -53,15 +54,36 @@ jobs:
         run: |
           set -euo pipefail
           IMAGE_TAG="${IMAGE_VERSION}"
+          SHA_TAG="${GITHUB_SHA}"
           IMAGE_BASE="$REGISTRY/${{ env.REGISTRY_ALIAS }}/${{ env.REPOSITORY }}"
           
           docker buildx build \
-            --platform linux/amd64 \
-            --cache-from type=gha,scope=presign \
-            --cache-to type=gha,mode=max,scope=presign \
+            --no-cache \
             --provenance=false \
             --sbom=false \
-            -t "$IMAGE_BASE:$IMAGE_TAG" . \
+            -t "$IMAGE_BASE:$IMAGE_TAG" \
+            -t "$IMAGE_BASE:$SHA_TAG" \
+            . \
             --push
+
+      - name: Resolve and print image digest
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry || '' }}
+        run: |
+          set -euo pipefail
+          IMAGE_BASE="$REGISTRY/${{ env.REGISTRY_ALIAS }}/${{ env.REPOSITORY }}"
+          DIGEST="$(docker buildx imagetools inspect "$IMAGE_BASE:${GITHUB_SHA}" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+          echo "Published images:"
+          echo "  - $IMAGE_BASE:${IMAGE_VERSION}"
+          echo "  - $IMAGE_BASE:${GITHUB_SHA}"
+          echo "  - $IMAGE_BASE@$DIGEST"
+
+      - name: Verify image binary in container
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry || '' }}
+        run: |
+          set -euo pipefail
+          IMAGE_BASE="$REGISTRY/${{ env.REGISTRY_ALIAS }}/${{ env.REPOSITORY }}"
+          docker run --rm "$IMAGE_BASE:${GITHUB_SHA}" sh -c 'ls -l /app/obs-presign && sha256sum /app/obs-presign'
 
 

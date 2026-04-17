@@ -1,6 +1,8 @@
 use axum::{Json, Router, extract::Query, routing::get};
+use base64::Engine;
 use chrono::Utc;
 use dotenvy::dotenv;
+use hmac::digest::KeyInit;
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha1::Sha1;
@@ -28,7 +30,7 @@ fn generate_presigned_url(
     let mut mac = HmacSha1::new_from_slice(sk.as_bytes()).unwrap();
     mac.update(string_to_sign.as_bytes());
 
-    let signature = base64::encode(mac.finalize().into_bytes());
+    let signature = base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes());
     let signature = urlencoding::encode(&signature);
 
     format!(
